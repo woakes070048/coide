@@ -8,6 +8,11 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'next',
     date: '',
+    notes: []
+  },
+  {
+    version: '0.27.0',
+    date: '2026-05-08',
     notes: [
       'AskUserQuestion now renders as a readable card with the question and option labels instead of "[object Object]"'
     ]
