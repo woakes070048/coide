@@ -8,7 +8,9 @@ export const RELEASE_NOTES: ReleaseNote[] = [
   {
     version: 'next',
     date: '',
-    notes: []
+    notes: [
+      'Fix: queued messages now stay with their original session if you switch sessions before the previous turn finishes'
+    ]
   },
   {
     version: '0.27.0',

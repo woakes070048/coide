@@ -76,7 +76,7 @@ export default function Chat({
   const [searchQuery, setSearchQuery] = useState('')
   const [activeMatchIndex, setActiveMatchIndex] = useState(0)
   const dragCounterRef = useRef(0)
-  const sendMessageRef = useRef<((text: string, images?: ImageAttachment[], files?: FileAttachment[]) => Promise<void>) | null>(null)
+  const sendMessageRef = useRef<((text: string, images?: ImageAttachment[], files?: FileAttachment[], targetSessionId?: string) => Promise<void>) | null>(null)
   // After 401, holds the prompt to re-send once /login succeeds, keyed by session id
   const pendingAuthRetryRef = useRef<Map<string, { text: string; images?: ImageAttachment[]; files?: FileAttachment[] }>>(new Map())
   // Extended thinking state: tracks when Claude is actively reasoning
@@ -409,7 +409,7 @@ export default function Chat({
               } else {
                 useSessionsStore.getState().setAutoCompacted(sid, true)
                 addMessage(sid, { id: Date.now().toString(), role: 'assistant', text: 'Context approaching limit — auto-compacting…' })
-                setTimeout(() => sendMessageRef.current?.('/compact'), 150)
+                setTimeout(() => sendMessageRef.current?.('/compact', undefined, undefined, sid), 150)
               }
             }
           }
@@ -591,7 +591,7 @@ export default function Chat({
         // Auto-send queued message
         const queued = useSessionsStore.getState().clearQueuedMessage(sid)
         if (queued && !event.is_error && sendMessageRef.current) {
-          setTimeout(() => sendMessageRef.current?.(queued.text, queued.images, queued.files), 100)
+          setTimeout(() => sendMessageRef.current?.(queued.text, queued.images, queued.files, sid), 100)
         }
 
         // Deferred auto-compaction (was busy when threshold was hit)
@@ -600,7 +600,7 @@ export default function Chat({
           useSessionsStore.getState().setPendingAutoCompact(sid, false)
           useSessionsStore.getState().setAutoCompacted(sid, true)
           addMessage(sid, { id: Date.now().toString(), role: 'assistant', text: 'Context approaching limit — auto-compacting…' })
-          setTimeout(() => sendMessageRef.current?.('/compact'), 150)
+          setTimeout(() => sendMessageRef.current?.('/compact', undefined, undefined, sid), 150)
         }
       }
 
@@ -738,10 +738,13 @@ export default function Chat({
     handlePermissionRespond(true)
   }, [permissionQueue, activeSessionId, updateSettings, handlePermissionRespond])
 
-  const sendMessage = useCallback(async (text: string, images?: ImageAttachment[], files?: FileAttachment[]): Promise<void> => {
-    const currentActiveId = useSessionsStore.getState().activeSessionId
+  const sendMessage = useCallback(async (text: string, images?: ImageAttachment[], files?: FileAttachment[], targetSessionId?: string): Promise<void> => {
+    // Background events (queued message after result, deferred auto-compact) pass
+    // targetSessionId so they route to the session that produced the event, not
+    // whichever session the user is currently viewing.
+    const routedSid = targetSessionId ?? useSessionsStore.getState().activeSessionId
     const hasAttachments = (images?.length ?? 0) > 0 || (files?.length ?? 0) > 0
-    if ((!text.trim() && !hasAttachments) || (currentActiveId && loadingSessions.has(currentActiveId))) return
+    if ((!text.trim() && !hasAttachments) || (routedSid && loadingSessions.has(routedSid))) return
 
     let prompt = text.trim()
 
@@ -752,9 +755,7 @@ export default function Chat({
       const slashName = prompt.slice(1).split(/\s/)[0]
       const builtInNames = new Set(BUILT_IN_COMMANDS.map((c) => c.name.slice(1).split(/\s/)[0]))
       if (!builtInNames.has(slashName)) {
-        const session = useSessionsStore.getState().sessions.find(
-          (s) => s.id === useSessionsStore.getState().activeSessionId
-        )
+        const session = useSessionsStore.getState().sessions.find((s) => s.id === routedSid)
         const skillCwd = session?.cwd ?? localStorage.getItem('cwd') ?? defaultCwd
         try {
           const skills = await window.api.skills.list(skillCwd)
@@ -770,7 +771,7 @@ export default function Chat({
 
     pendingToolsRef.current.clear()
 
-    let sid = useSessionsStore.getState().activeSessionId
+    let sid = routedSid
     if (!sid) {
       sid = useSessionsStore.getState().createSession(localStorage.getItem('cwd') ?? defaultCwd)
     }
