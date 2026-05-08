@@ -39,6 +39,39 @@ describe('inlineLabel', () => {
     expect(inlineLabel('TodoWrite', {}, true)).toBe('Updated todos')
   })
 
+  it('summarizes AskUserQuestion with the first question text', () => {
+    const input = {
+      questions: [
+        { question: 'How should we handle dark mode?', options: [] },
+        { question: 'Where should config live?', options: [] }
+      ]
+    }
+    const label = inlineLabel('AskUserQuestion', input, false)
+    expect(label).toContain('How should we handle dark mode?')
+    expect(label).toContain('(+1)')
+  })
+
+  it('falls back to question count when first question has no text', () => {
+    const input = { questions: [{ options: [] }, { options: [] }] }
+    const label = inlineLabel('AskUserQuestion', input, false)
+    expect(label).toContain('2 questions')
+  })
+
+  it('returns empty for AskUserQuestion with no questions array', () => {
+    const label = inlineLabel('AskUserQuestion', {}, false)
+    expect(label).toBe('AskUserQuestion')
+  })
+
+  it('does not stringify object/array inputs as "[object Object]" for unknown tools', () => {
+    const label = inlineLabel('SomeUnknownTool', { items: [{ a: 1 }, { b: 2 }] }, false)
+    expect(label).not.toContain('[object Object]')
+    expect(label).toBe('SomeUnknownTool')
+  })
+
+  it('preserves string fallback for unknown tools', () => {
+    expect(inlineLabel('SomeUnknownTool', { foo: 'hello' }, false)).toBe('SomeUnknownTool  hello')
+  })
+
   it('shortens long paths to last 3 segments', () => {
     const label = inlineLabel('Read', { file_path: '/Users/victor/Projects/coide/src/main/index.ts' }, true)
     expect(label).toContain('…/')

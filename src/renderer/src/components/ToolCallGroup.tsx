@@ -3,6 +3,7 @@ import type { ToolCallMessage } from '../store/sessions'
 import { useSettingsStore } from '../store/settings'
 import { inlineLabel, buildGroupSummary, formatToolName } from '../utils/toolSummary'
 import { useFilePreviewStore } from '../store/filePreview'
+import AskUserQuestionCard from './AskUserQuestionCard'
 
 const FILE_TOOLS = new Set(['Read', 'Edit', 'Write'])
 
@@ -70,9 +71,13 @@ export default function ToolCallGroup({
 
   // Single tool call — just render a trace line
   if (isSingle) {
+    const only = messages[0]
+    if (only.tool_name === 'AskUserQuestion') {
+      return <AskUserQuestionCard message={only} />
+    }
     return (
       <div className={compact ? 'py-0' : 'py-0.5'}>
-        <TraceLine message={messages[0]} />
+        <TraceLine message={only} />
       </div>
     )
   }

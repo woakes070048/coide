@@ -4,6 +4,7 @@ import { useSessionsStore, type Message, type TextMessage, type ToolCallMessage,
 import { useSettingsStore } from '../store/settings'
 import MarkdownRenderer from './MarkdownRenderer'
 import ToolCallCard from './ToolCallCard'
+import AskUserQuestionCard from './AskUserQuestionCard'
 import ToolCallGroup from './ToolCallGroup'
 import PermissionDialog, { type PermissionRequest } from './PermissionDialog'
 import ChatInput from './ChatInput'
@@ -250,12 +251,15 @@ export default function Chat({
       // Group consecutive tool_call messages
       if (msg.role === 'tool_call') {
         const tc = msg as ToolCallMessage
-        // Denied calls get their own group for visibility
-        if (tc.denied) {
+        // Denied calls and AskUserQuestion get their own group for visibility
+        if (tc.denied || tc.tool_name === 'AskUserQuestion') {
           items.push({ kind: 'tool_group', messages: [tc], firstId: tc.id })
         } else {
           const last = items[items.length - 1]
-          if (last?.kind === 'tool_group' && !last.messages.some((m) => m.denied)) {
+          if (
+            last?.kind === 'tool_group' &&
+            !last.messages.some((m) => m.denied || m.tool_name === 'AskUserQuestion')
+          ) {
             last.messages.push(tc)
           } else {
             items.push({ kind: 'tool_group', messages: [tc], firstId: tc.id })
@@ -1472,7 +1476,11 @@ const MessageRow = React.memo(function MessageRow({ message, isLoading, onEdit, 
   const compact = useSettingsStore((s) => s.compactMode)
 
   if (message.role === 'tool_call') {
-    return <ToolCallCard message={message as ToolCallMessage} isLoading={isLoading} />
+    const tc = message as ToolCallMessage
+    if (tc.tool_name === 'AskUserQuestion') {
+      return <AskUserQuestionCard message={tc} />
+    }
+    return <ToolCallCard message={tc} isLoading={isLoading} />
   }
 
   if (message.role === 'user') {

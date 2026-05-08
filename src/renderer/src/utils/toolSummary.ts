@@ -60,9 +60,23 @@ function toolDetail(name: string, input: Record<string, unknown>): string {
     case 'Task':
     case 'Agent': return String(input.description ?? input.prompt ?? '').slice(0, 60)
     case 'TodoWrite': return ''
+    case 'AskUserQuestion': {
+      const qs = input.questions
+      if (Array.isArray(qs) && qs.length > 0) {
+        const first = qs[0] as { question?: unknown }
+        const text = typeof first?.question === 'string' ? first.question : ''
+        const more = qs.length > 1 ? ` (+${qs.length - 1})` : ''
+        return text ? `${text.slice(0, 50)}${more}` : `${qs.length} question${qs.length > 1 ? 's' : ''}`
+      }
+      return ''
+    }
     default: {
       const first = Object.values(input)[0]
-      return first != null ? String(first).slice(0, 50) : ''
+      if (first == null) return ''
+      if (typeof first === 'string') return first.slice(0, 50)
+      if (typeof first === 'number' || typeof first === 'boolean') return String(first)
+      // Avoid "[object Object]" / "[object Object],[object Object]"
+      return ''
     }
   }
 }

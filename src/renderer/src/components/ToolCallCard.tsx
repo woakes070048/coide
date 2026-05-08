@@ -42,7 +42,10 @@ function inputSummary(name: string, input: Record<string, unknown>): string {
   if (name === 'TaskList') return 'List all tasks'
   if (name === 'TaskGet') return `#${input.taskId ?? '?'}`
   const first = Object.values(input)[0]
-  return first != null ? String(first).slice(0, 60) : ''
+  if (first == null) return ''
+  if (typeof first === 'string') return first.slice(0, 60)
+  if (typeof first === 'number' || typeof first === 'boolean') return String(first)
+  return ''
 }
 
 function truncateResult(text: string, maxLen: number): string {
